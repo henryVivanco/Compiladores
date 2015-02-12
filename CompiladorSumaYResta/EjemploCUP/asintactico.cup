@@ -1,0 +1,103 @@
+ 
+package ejemplocup;
+
+import java_cup.runtime.*;
+import java.io.FileReader;
+
+parser code {:
+    
+    public void report_error(String message, Object info) {
+        StringBuilder m = new StringBuilder("Error");
+        if (info instanceof java_cup.runtime.Symbol) {
+            java_cup.runtime.Symbol s = ((java_cup.runtime.Symbol) info);
+            if (s.left >= 0) {                
+                m.append(" in line "+(s.left+1));
+                if (s.right >= 0)
+                    m.append(", column "+(s.right+1));
+            }
+        }
+        m.append(" : "+message);
+        System.err.println(m);
+    }
+   
+    public void report_fatal_error(String message, Object info) {
+        report_error(message, info);
+        System.exit(1);
+    }
+
+    public static void main(String[] args){
+        try {
+            AnalizadorSintactico asin = new AnalizadorSintactico(
+                    new AnalizadorLexico( new FileReader(args[0])));
+            Object result = asin.parse().value;
+            System.out.println("\n*** Resultados ***");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+:};
+   
+
+terminal           FINLINEA, SUMA, RESTA, IMPRIMIR;
+terminal Integer   ENTERO;
+
+
+non terminal Object lista, sentencia;
+non terminal Integer exprecion, termino;
+   
+
+lista ::= lista sentencia
+                  |
+                  sentencia
+                  ;
+
+   
+sentencia ::= error {:
+                    parser.report_fatal_error("Debe ir la Palabra reservada <<Imp>>", 5 ); 
+                    :}
+                  |IMPRIMIR error {:
+                    parser.report_fatal_error("La Operacion debe realizarse con dos numero de 2 digitos cada uno y el fin de linea debe ser <<h>>", 6 ); 
+                    :}
+                  |IMPRIMIR ENTERO  error {:
+                    parser.report_fatal_error("Falta Operador <<SUMA>> o <<RESTA>>", 4 ); 
+                    :}
+                  |IMPRIMIR exprecion:e
+                  {:  
+                    System.out.println(" IGUAL " + e); 
+                  :} 
+                  FINLINEA
+                 ;
+
+
+exprecion      ::= exprecion:e SUMA termino:f
+                  {:
+                    e = Integer.parseInt(new StringBuffer(String.valueOf(e)).reverse().toString());
+                    f = Integer.parseInt(new StringBuffer(String.valueOf(f)).reverse().toString());
+                    RESULT = new Integer(e.intValue() + f.intValue());
+                  :}
+                  |
+                  exprecion:e RESTA termino:f
+                  {:
+                    e = Integer.parseInt(new StringBuffer(String.valueOf(e)).reverse().toString());
+                    f = Integer.parseInt(new StringBuffer(String.valueOf(f)).reverse().toString());
+                    RESULT = new Integer(e.intValue() - f.intValue());
+                  :}
+                  |
+                  termino:n
+                  {:
+                    RESULT = n; 
+                  :}
+                  ;
+
+
+  termino       ::= ENTERO:e
+                  {:
+                    RESULT = e;
+                  :}
+                  ; 
+
+
+
+
+
